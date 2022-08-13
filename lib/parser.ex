@@ -76,11 +76,27 @@ defmodule Tony.Parser do
 
   def parse_expression(p) do
     p = expect(p, :LEFT_PAREN)
-    {p, id} = expect_and_get(p, :IDENTIFIER)
+    {p, id} = expect_and_get_head_expr(p)
     {p, value} = parse_parameters(p)
     p = expect(p, :RIGHT_PAREN)
 
     {p, %Expression{identifier: id, parameters: value}}
+  end
+
+  def expect_and_get_head_expr(p) do
+    is_head_expr? =
+      match(p, :IDENTIFIER)
+      |> Kernel.or(match(p, :OPERATOR))
+      |> Kernel.or(match(p, :COMPARATOR))
+      |> Kernel.or(match(p, :LOGIC_OPERATOR))
+
+    if is_head_expr? do
+      get_curr_token(p)
+    else
+      {_p, curr} = get_curr_token(p)
+
+      raise "Expected: IDENTIFIER or OPERATOR or COMPARATOR or LOGIC_OPERATOR, Got: #{inspect(curr)}"
+    end
   end
 
   def parse_parameters(p), do: parse_parameters(p, [])
@@ -98,7 +114,7 @@ defmodule Tony.Parser do
   def parse_parameter(p) do
     cond do
       match(p, :LEFT_PAREN) ->
-	parse_expression(p)
+        parse_expression(p)
 
       match(p, :RIGHT_PAREN) ->
         {p, nil}
