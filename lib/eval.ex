@@ -27,7 +27,7 @@ defmodule Tony.Eval do
     {env, id} = eval(env, identifier)
 
     cond do
-      build_in?(env, id) ->
+      Environment.build_in?(env, id) ->
         eval(id, params, env)
     end
   end
@@ -44,7 +44,7 @@ defmodule Tony.Eval do
         {env, String.to_atom(value)}
 
       :IDENTIFIER ->
-        if build_in?(env, value) do
+        if Environment.build_in?(env, value) do
           {env, value}
         else
           case Environment.get(env, value) do
@@ -58,7 +58,31 @@ defmodule Tony.Eval do
     end
   end
 
-  def build_in?(env, id), do: id in env.build_in
+  def eval("defun", [_ | []], _env), do: raise("defun: expects a body")
+
+  def eval("defun", [head | body], env) do
+    head = consume_head_defun(head)
+    fun = Map.put(head, :body, body)
+
+    {Environment.put_fun(env, fun), nil}
+  end
+
+  def eval("not", [param | []], env) do
+    {env, param} = eval(env, param)
+
+    {env, !param}
+  end
+
+  def eval("not", _params, _env), do: raise("not: expects 1 argument")
+
+  def eval("print", [param | []], env) do
+    {env, param} = eval(env, param)
+    IO.inspect(param)
+
+    {env, param}
+  end
+
+  def eval("print", _params, _env), do: raise("print: expects 1 argument")
 
   def eval(identifier, params, env) do
     {params, env} =
@@ -75,32 +99,33 @@ defmodule Tony.Eval do
       "/" -> handle_operator("/", params, env)
       "and" -> handle_operator("and", params, env)
       "or" -> handle_operator("or", params, env)
-      "not" -> handle_operator("not", params, env)
-      "defun" -> handle_defun(params, env)
     end
+  end
+
+  def consume_head_defun(%Expression{identifier: id, parameters: params}) do
+    %{
+      name: id.value,
+      params: Enum.map(params, fn p -> p.value end)
+    }
   end
 
   def handle_operator("+", params, env) do
     check_if_all_numbers!(params)
-
     {env, Enum.sum(params)}
   end
 
   def handle_operator("-", [head | params], env) do
     check_if_all_numbers!(params)
-
     {env, Enum.reduce(params, head, &(&2 - &1))}
   end
 
   def handle_operator("*", [head | params], env) do
     check_if_all_numbers!(params)
-
     {env, Enum.reduce(params, head, &(&2 * &1))}
   end
 
   def handle_operator("/", [head | params], env) do
     check_if_all_numbers!(params)
-
     {env, Enum.reduce(params, head, &(&2 / &1))}
   end
 
@@ -117,8 +142,6 @@ defmodule Tony.Eval do
        if p, do: {:halt, true}, else: {:cont, false}
      end)}
   end
-
-  def handle_defun(_params, env), do: {env, nil}
 
   def check_if_all_numbers!(params) do
     is? = Enum.all?(params, &is_number/1)

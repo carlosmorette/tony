@@ -9,11 +9,12 @@ defmodule Tony.Environment do
     "defun",
     "and",
     "or",
-    "not"
+    "not",
+    "print"
   ]
 
-  defstruct curr_scope: nil,
-            out_scope: nil,
+  defstruct curr_scope: %{},
+            out_scope: %{},
             build_in: nil
 
   def new(), do: %Environment{build_in: @functions}
@@ -34,5 +35,16 @@ defmodule Tony.Environment do
 
   def get(env, :out_scope, key) do
     Map.get(env.out_scope, key)
+  end
+
+  def build_in?(env, id), do: id in env.build_in
+
+  def available_identifier?(env, id) do
+    value = get(env, :curr_scope, id)
+    if is_nil(value), do: true, else: false
+  end
+
+  def put_fun(env, %{name: name, params: _params, body: _body} = fun) do
+    %{env | curr_scope: Map.put(env.curr_scope, name, fun)}
   end
 end
