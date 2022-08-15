@@ -1,17 +1,30 @@
 defmodule Tony.Environment do
   alias __MODULE__
 
-  @functions [
-    "+",
-    "-",
-    "*",
-    "/",
-    "defun",
+  @comparators [
+    "==",
+    "!=",
+    ">=",
+    "<=",
+    ">",
+    "<"
+  ]
+
+  @logic_operators [
     "and",
     "or",
-    "not",
-    "print"
+    "not"
   ]
+
+  @functions [
+               "+",
+               "-",
+               "*",
+               "/",
+               "defun",
+               "print",
+               "if"
+             ] ++ @comparators ++ @logic_operators
 
   defstruct curr_scope: %{},
             out_scope: %{},
@@ -45,6 +58,16 @@ defmodule Tony.Environment do
   end
 
   def put_fun(env, %{name: name, params: _params, body: _body} = fun) do
+    # fun = Map.put(fun, :type, :function)
+
     %{env | curr_scope: Map.put(env.curr_scope, name, fun)}
+  end
+
+  def new_scope(env) do
+    %{env | out_scope: Map.merge(env.out_scope, env.curr_scope), curr_scope: %{}}
+  end
+
+  def put(env, map) do
+    %{env | curr_scope: Map.merge(env.curr_scope, map)}
   end
 end

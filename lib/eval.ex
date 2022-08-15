@@ -8,6 +8,8 @@ defmodule Tony.Eval do
   def run({:ok, declarations}) do
     env = Environment.new()
     eval(env, declarations)
+
+    :ok
   end
 
   def eval(env, []), do: {env, nil}
@@ -29,6 +31,9 @@ defmodule Tony.Eval do
     cond do
       Environment.build_in?(env, id) ->
         eval(id, params, env)
+
+      true ->
+        eval_fun_call(env, id, params)
     end
   end
 
@@ -38,10 +43,13 @@ defmodule Tony.Eval do
         {env, String.to_integer(value)}
 
       :STRING ->
-        {env, String.replace(value, "\"", "")}
+        {env, String.trim(String.replace(value, "\"", ""))}
 
       :BOOLEAN ->
         {env, String.to_atom(value)}
+
+      :NULL ->
+        {env, :null}
 
       :IDENTIFIER ->
         if Environment.build_in?(env, value) do
@@ -55,13 +63,19 @@ defmodule Tony.Eval do
 
       :OPERATOR ->
         {env, value}
+
+      :COMPARATOR ->
+        {env, value}
+
+      :LOGIC_OPERATOR ->
+        {env, value}
     end
   end
 
   def eval("defun", [_ | []], _env), do: raise("defun: expects a body")
 
   def eval("defun", [head | body], env) do
-    head = consume_head_defun(head)
+    head = make_head_defun(head)
     fun = Map.put(head, :body, body)
 
     {Environment.put_fun(env, fun), nil}
@@ -76,9 +90,8 @@ defmodule Tony.Eval do
   def eval("not", _params, _env), do: raise("not: expects 1 argument")
 
   def eval("print", [param | []], env) do
-    {env, param} = eval(env, param)
-    IO.inspect(param)
-
+    {env, result} = eval(env, param)
+    IO.inspect(result)
     {env, param}
   end
 
@@ -99,10 +112,45 @@ defmodule Tony.Eval do
       "/" -> handle_operator("/", params, env)
       "and" -> handle_operator("and", params, env)
       "or" -> handle_operator("or", params, env)
+      "if" -> handle_if(params, env)
+      "==" -> handle_comparator("==", params, env)
+      "!=" -> handle_comparator("!=", params, env)
+      ">=" -> handle_comparator(">=", params, env)
+      "<=" -> handle_comparator("<=", params, env)
+      ">" -> handle_comparator(">", params, env)
+      "<" -> handle_comparator("<", params, env)
     end
   end
 
-  def consume_head_defun(%Expression{identifier: id, parameters: params}) do
+  def eval_fun_call(env, fun, params) do
+    {params, env} =
+      Enum.map_reduce(params, env, fn p, acc_env ->
+        {env, r} = eval(acc_env, p)
+        {r, env}
+      end)
+
+    params =
+      fun[:params]
+      |> Enum.zip(params)
+      |> Enum.into(%{})
+
+    env =
+      env
+      |> Environment.new_scope()
+      |> Environment.put(params)
+
+    do_eval_fun_call(env, fun.body)
+  end
+
+  def do_eval_fun_call(env, [last | []]), do: eval(env, last)
+
+  def do_eval_fun_call(env, [first | rest]) do
+    {env, _result} = eval(env, first)
+
+    do_eval_fun_call(env, rest)
+  end
+
+  def make_head_defun(%Expression{identifier: id, parameters: params}) do
     %{
       name: id.value,
       params: Enum.map(params, fn p -> p.value end)
@@ -142,6 +190,38 @@ defmodule Tony.Eval do
        if p, do: {:halt, true}, else: {:cont, false}
      end)}
   end
+
+  def handle_comparator(comparator, [left, right | []], env) do
+    result =
+      case comparator do
+        "==" -> left == right
+        "!=" -> left != right
+        ">=" -> left >= right
+        "<=" -> left <= right
+        ">" -> left > right
+        "<" -> left < right
+      end
+
+    {env, result}
+  end
+
+  def handle_comparator(comparator, _params, _env),
+    do: raise("#{comparator}: expects 2 arguments")
+
+  def handle_if([condition, true_expr, false_expr], env) do
+    result =
+      if true?(condition) do
+        true_expr
+      else
+        false_expr
+      end
+
+    {env, result}
+  end
+
+  def true?(:null), do: false
+
+  def true?(condition), do: condition
 
   def check_if_all_numbers!(params) do
     is? = Enum.all?(params, &is_number/1)

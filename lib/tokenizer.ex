@@ -5,16 +5,18 @@ defmodule Tony.Tokenizer do
     %{regex: ~r/^\(/, id: :LEFT_PAREN},
     %{regex: ~r/^\)/, id: :RIGHT_PAREN},
     %{regex: ~r/^(true|false)/, id: :BOOLEAN, value?: true},
+    %{regex: ~r/^null/, id: :NULL},
     %{regex: ~r/^[a-z]+/, id: :IDENTIFIER, value?: true},
+    %{regex: ~r/^\".*\"\s/, id: :STRING, value?: true},
     %{regex: ~r/^\".*\"/, id: :STRING, value?: true},
-    %{regex: ~r/^\d+/, id: :NUMBER, value?: true},
-    %{regex: ~r/^\-\d+/, id: :NUMBER, value?: true},
-    %{regex: ~r/^nil/, id: :NIL},
+    %{regex: ~r/^(\d|\-\d)+/, id: :NUMBER, value?: true},
     %{regex: ~r/^\s/, ignore?: true},
     %{regex: ~r/^\n/, ignore?: true},
     %{regex: ~r/^(\+|-|\/|\*)/, id: :OPERATOR, value?: true},
-    %{regex: ~r/^(>|<|>=|<=|!=|==)/, id: :COMPARATOR, value?: true},
-    %{regex: ~r/^(and|not|or)/, id: :LOGIC_OPERATOR, value?: true}
+    %{regex: ~r/^(>=|<=|>|<|!=|==)/, id: :COMPARATOR, value?: true},
+    %{regex: ~r/^(and|not|or)/, id: :LOGIC_OPERATOR, value?: true},
+    %{regex: ~r/^\;.*\n/, id: :COMMENT, ignore?: true},
+    %{regex: ~r/^\;.*/, id: :COMMENT, ignore?: true}
   ]
 
   def run(string) do

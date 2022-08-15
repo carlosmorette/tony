@@ -1,5 +1,11 @@
 (defun (sum a b)
-       (defvar result (+ 1 2))
-       result)
+  (+ a b))
 
-(print "Tony lang")
+(print (sum 9 44))
+
+(defun (checklanguage name)
+   (if (== name "Tony")
+       "My Own LISP"
+       "Another language"))
+
+(print (checklanguage "Tony")) ;; My Own LISP

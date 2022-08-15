@@ -23,14 +23,6 @@ defmodule Tony.Parser do
     {next_token(p), curr}
   end
 
-  defp expect_and_get(%Parser{curr: %Token{id: id, value: value}} = p, expected_id) do
-    if id == expected_id do
-      {next_token(p), value}
-    else
-      raise "Expected: #{expected_id}, Got: #{id}"
-    end
-  end
-
   defp next_token(%Parser{curr: curr, rest: []} = p) do
     %{p | prev: curr, rest: [], curr: nil}
   end
@@ -130,6 +122,7 @@ defmodule Tony.Parser do
       |> Kernel.or(match(p, :NUMBER))
       |> Kernel.or(match(p, :BOOLEAN))
       |> Kernel.or(match(p, :IDENTIFIER))
+      |> Kernel.or(match(p, :NULL))
 
     if is_primary? do
       {p, value} = get_curr_token(p)
