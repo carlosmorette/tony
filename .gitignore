@@ -24,3 +24,5 @@ tony-*.tar
 
 # Temporary files, for example, from tests.
 /tmp/
+
+grammar.txt

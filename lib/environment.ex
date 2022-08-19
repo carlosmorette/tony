@@ -50,7 +50,7 @@ defmodule Tony.Environment do
     Map.get(env.out_scope, key)
   end
 
-  def build_in?(env, id), do: id in env.build_in
+  def built_in?(env, id), do: id in env.build_in
 
   def available_identifier?(env, id) do
     value = get(env, :curr_scope, id)

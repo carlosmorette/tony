@@ -29,7 +29,7 @@ defmodule Tony.Eval do
     {env, id} = eval(env, identifier)
 
     cond do
-      Environment.build_in?(env, id) ->
+      Environment.built_in?(env, id) ->
         eval(id, params, env)
 
       true ->
@@ -52,7 +52,7 @@ defmodule Tony.Eval do
         {env, :null}
 
       :IDENTIFIER ->
-        if Environment.build_in?(env, value) do
+        if Environment.built_in?(env, value) do
           {env, value}
         else
           case Environment.get(env, value) do
