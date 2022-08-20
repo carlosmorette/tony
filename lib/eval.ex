@@ -1,6 +1,7 @@
 defmodule Tony.Eval do
   alias Tony.{
     Token,
+    Procedure,
     Expression,
     Environment
   }
@@ -76,11 +77,14 @@ defmodule Tony.Eval do
 
   def eval("defun", [_ | []], _env), do: raise("defun: expects a body")
 
-  def eval("defun", [head | body], env) do
-    head = make_head_defun(head)
-    fun = Map.put(head, :body, body)
+  def eval("defun", [%Expression{identifier: id, parameters: params} | body], env) do
+    procedure = %Procedure{
+      name: id.value,
+      params: Enum.map(params, fn p -> p.value end),
+      body: body
+    }
 
-    {Environment.put_fun(env, fun), nil}
+    {Environment.put_fun(env, procedure), nil}
   end
 
   def eval("not", [param | []], env) do
@@ -89,23 +93,68 @@ defmodule Tony.Eval do
     {env, !param}
   end
 
-  def eval("not", _params, _env), do: raise("not: expects 1 argument")
-
   def eval("print", [param | []], env) do
     {env, result} = eval(env, param)
     IO.inspect(result)
     {env, param}
   end
 
-  def eval("print", _params, _env), do: raise("print: expects 1 argument")
-
   def eval("lambda", [params, body], env) do
-    fun = %{
-      params: Enum.map(params, fn t -> t.value end),
-      body: body
-    }
+    {env, %Procedure{params: Enum.map(params, fn t -> t.value end), body: body}}
+  end
 
-    {env, fun}
+  def eval("list", params, env) do
+    {items, env} =
+      Enum.map_reduce(params, env, fn p, e ->
+        {new_e, r} = eval(e, p)
+        {r, new_e}
+      end)
+
+    {env, items}
+  end
+
+  def eval("head", [param | []], env) do
+    {env, result} = eval(env, param)
+
+    if is_list(result) do
+      {env, List.first(result)}
+    else
+      raise "head: expects a list"
+    end
+  end
+
+  def eval("tail", [param | []], env) do
+    {env, result} = eval(env, param)
+
+    if is_list(result) do
+      if Enum.empty?(result) do
+        {env, []}
+      else
+        [_head | tail] = result
+        {env, tail}
+      end
+    else
+      raise "tail: expects a list"
+    end
+  end
+
+  def eval("empty?", [param | []], env) do
+    {env, result} = eval(env, param)
+    {env, Enum.empty?(result)}
+  end
+
+  def eval(fun, _params, _env) when fun in ["head", "tail", "empty?", "print", "not"] do
+    raise "#{fun}: expects 1 argument"
+  end
+
+  def eval("if", [condition, true_expr, false_expr], env) do
+    {env, condition} = eval(env, condition)
+
+    if true?(condition) do
+      eval(env, true_expr)
+    else
+      eval(env, false_expr)
+    end
   end
 
   def eval(identifier, params, env) do
@@ -123,7 +172,6 @@ defmodule Tony.Eval do
       "/" -> handle_operator("/", params, env)
       "and" -> handle_operator("and", params, env)
       "or" -> handle_operator("or", params, env)
-      "if" -> handle_if(params, env)
       "==" -> handle_comparator("==", params, env)
       "!=" -> handle_comparator("!=", params, env)
       ">=" -> handle_comparator(">=", params, env)
@@ -133,7 +181,7 @@ defmodule Tony.Eval do
     end
   end
 
-  def eval_fun_call(env, fun, params) do
+  def eval_fun_call(env, %Procedure{} = fun, params) do
     {params, env} =
       Enum.map_reduce(params, env, fn p, acc_env ->
         {env, r} = eval(acc_env, p)
@@ -141,7 +189,7 @@ defmodule Tony.Eval do
       end)
 
     params =
-      fun[:params]
+      fun.params
       |> Enum.zip(params)
       |> Enum.into(%{})
 
@@ -218,17 +266,6 @@ defmodule Tony.Eval do
 
   def handle_comparator(comparator, _params, _env),
     do: raise("#{comparator}: expects 2 arguments")
-
-  def handle_if([condition, true_expr, false_expr], env) do
-    result =
-      if true?(condition) do
-        true_expr
-      else
-        false_expr
-      end
-
-    {env, result}
-  end
 
   def true?(:null), do: false
 

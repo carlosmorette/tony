@@ -37,6 +37,16 @@ end
 (mult-lambda-version 2 3 (lambda (r) (print r))) ;; 6
 
 ((lambda (x) (print x)) "That's works!") ;; That's works!
+
+;; Recursion
+(defun (reduce-sum lst acc)
+       (if (empty? lst)
+         acc
+		 (reduce-sum
+			 (tail lst)
+			 (+ acc (head lst)))))
+
+(print (reduce-sum (list 54 67 89) 0)) ;; 210
 ```
 
 Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)

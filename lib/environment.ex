@@ -1,6 +1,8 @@
 defmodule Tony.Environment do
   alias __MODULE__
 
+  alias Tony.Procedure
+
   @comparators [
     "==",
     "!=",
@@ -16,6 +18,8 @@ defmodule Tony.Environment do
     "not"
   ]
 
+  @list ["list", "head", "tail", "empty?"]
+
   @functions [
                "+",
                "-",
@@ -25,7 +29,7 @@ defmodule Tony.Environment do
                "print",
                "if",
                "lambda"
-             ] ++ @comparators ++ @logic_operators
+             ] ++ @comparators ++ @logic_operators ++ @list
 
   defstruct curr_scope: %{},
             out_scope: %{},
@@ -58,7 +62,7 @@ defmodule Tony.Environment do
     if is_nil(value), do: true, else: false
   end
 
-  def put_fun(env, %{name: name, params: _params, body: _body} = fun) do
+  def put_fun(env, %Procedure{name: name, params: _params, body: _body} = fun) do
     %{env | curr_scope: Map.put(env.curr_scope, name, fun)}
   end
 

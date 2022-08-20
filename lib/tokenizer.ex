@@ -6,7 +6,7 @@ defmodule Tony.Tokenizer do
     %{regex: ~r/^\)/, id: :RIGHT_PAREN},
     %{regex: ~r/^(true|false)/, id: :BOOLEAN, value?: true},
     %{regex: ~r/^null/, id: :NULL},
-    %{regex: ~r/^[a-z]+(-[a-z]+)*/, id: :IDENTIFIER, value?: true},
+    %{regex: ~r/^[a-z]+(-[a-z]+)*(\?)*/, id: :IDENTIFIER, value?: true},
     %{regex: ~r/^\".*\"\s/, id: :STRING, value?: true},
     %{regex: ~r/^\".*\"/, id: :STRING, value?: true},
     %{regex: ~r/^(\d|\-\d)+/, id: :NUMBER, value?: true},
