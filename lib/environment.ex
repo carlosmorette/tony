@@ -23,7 +23,8 @@ defmodule Tony.Environment do
                "/",
                "defun",
                "print",
-               "if"
+               "if",
+               "lambda"
              ] ++ @comparators ++ @logic_operators
 
   defstruct curr_scope: %{},
@@ -58,8 +59,6 @@ defmodule Tony.Environment do
   end
 
   def put_fun(env, %{name: name, params: _params, body: _body} = fun) do
-    # fun = Map.put(fun, :type, :function)
-
     %{env | curr_scope: Map.put(env.curr_scope, name, fun)}
   end
 

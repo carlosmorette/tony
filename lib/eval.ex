@@ -25,6 +25,8 @@ defmodule Tony.Eval do
     eval(env, rest)
   end
 
+  def eval(env, %Expression{identifier: nil}), do: {env, nil}
+
   def eval(env, %Expression{identifier: identifier, parameters: params}) do
     {env, id} = eval(env, identifier)
 
@@ -139,15 +141,15 @@ defmodule Tony.Eval do
       |> Environment.new_scope()
       |> Environment.put(params)
 
-    do_eval_fun_call(env, fun.body)
+    do_eval_fun_body(env, fun.body)
   end
 
-  def do_eval_fun_call(env, [last | []]), do: eval(env, last)
+  def do_eval_fun_body(env, [last | []]), do: eval(env, last)
 
-  def do_eval_fun_call(env, [first | rest]) do
+  def do_eval_fun_body(env, [first | rest]) do
     {env, _result} = eval(env, first)
 
-    do_eval_fun_call(env, rest)
+    do_eval_fun_body(env, rest)
   end
 
   def make_head_defun(%Expression{identifier: id, parameters: params}) do
