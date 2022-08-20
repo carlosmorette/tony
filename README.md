@@ -27,6 +27,16 @@ end
        "Another language"))
 
 (print (checklanguage "Tony")) ;; My Own LISP
+
+
+;; Lambda
+
+(defun (mult-lambda-version a b callback)
+    (callback (* a b)))
+
+(mult-lambda-version 2 3 (lambda (r) (print r))) ;; 6
+
+((lambda (x) (print x)) "That's works!") ;; That's works!
 ```
 
 Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)

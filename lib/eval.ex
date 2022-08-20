@@ -99,6 +99,15 @@ defmodule Tony.Eval do
 
   def eval("print", _params, _env), do: raise("print: expects 1 argument")
 
+  def eval("lambda", [params, body], env) do
+    fun = %{
+      params: Enum.map(params, fn t -> t.value end),
+      body: body
+    }
+
+    {env, fun}
+  end
+
   def eval(identifier, params, env) do
     {params, env} =
       Enum.map_reduce(params, env, fn p, e ->

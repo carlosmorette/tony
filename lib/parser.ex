@@ -41,6 +41,10 @@ defmodule Tony.Parser do
 
   def match(_parser, _expected), do: false
 
+  def lambda?(%Tony.Parser{curr: %Tony.Token{value: "lambda"}}), do: true
+
+  def lambda?(_p), do: false
+
   def run(tokens) do
     tokens
     |> from_tokens()
@@ -58,6 +62,9 @@ defmodule Tony.Parser do
 
   def parse_declaration(p) do
     cond do
+      lambda?(next_token(p)) ->
+        parse_lambda(p)
+
       match(p, :LEFT_PAREN) ->
         parse_expression(p)
 
@@ -66,17 +73,69 @@ defmodule Tony.Parser do
     end
   end
 
-  def parse_expression(p) do
+  def parse_lambda(p) do
     p = expect(p, :LEFT_PAREN)
+    {p, id} = expect_and_get_head_expr(p)
+    p = expect(p, :LEFT_PAREN)
+    {p, params} = parse_lambda_params(p)
+    p = expect(p, :RIGHT_PAREN)
+    {p, body} = parse_lambda_body(p)
+    p = expect(p, :RIGHT_PAREN)
 
-    if match(p, :RIGHT_PAREN) do
-      {next_token(p), %Expression{}}
-    else
-      {p, id} = expect_and_get_head_expr(p)
-      {p, value} = parse_parameters(p)
-      p = expect(p, :RIGHT_PAREN)
+    {p, %Expression{identifier: id, parameters: [params, body]}}
+  end
 
-      {p, %Expression{identifier: id, parameters: value}}
+  def parse_lambda_params(p), do: parse_lambda_param(p, [])
+
+  def parse_lambda_param(p, acc) do
+    cond do
+      match(p, :IDENTIFIER) ->
+        {p, token} = get_curr_token(p)
+        parse_lambda_param(p, acc ++ [token])
+
+      match(p, :RIGHT_PAREN) ->
+        {p, acc}
+
+      true ->
+        {_p, token} = get_curr_token(p)
+        raise "Expected a IDENTIFIER, Got: #{token}"
+    end
+  end
+
+  def parse_lambda_body(p), do: parse_lambda_body(p, [])
+
+  def parse_lambda_body(p, acc) do
+    cond do
+      match(p, :LEFT_PAREN) ->
+        {p, r} = parse_expression(p)
+        parse_lambda_body(p, acc ++ [r])
+
+      match(p, :RIGHT_PAREN) ->
+        {p, acc}
+
+      true ->
+        {p, r} = parse_primary(p)
+        parse_lambda_body(p, acc ++ [r])
+    end
+  end
+
+  def parse_expression(p) do
+    cond do
+      lambda?(next_token(p)) ->
+        parse_lambda(p)
+
+      true ->
+        p = expect(p, :LEFT_PAREN)
+
+        if match(p, :RIGHT_PAREN) do
+          {next_token(p), %Expression{}}
+        else
+          {p, id} = expect_and_get_head_expr(p)
+          {p, value} = parse_parameters(p)
+          p = expect(p, :RIGHT_PAREN)
+
+          {p, %Expression{identifier: id, parameters: value}}
+        end
     end
   end
 
