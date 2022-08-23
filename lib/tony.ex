@@ -5,6 +5,6 @@ defmodule Tony do
     string
     |> Tokenizer.run()
     |> Parser.run()
-    |> Eval.run()
+    |> Eval.run(nil)
   end
 end

@@ -53,7 +53,7 @@ defmodule Tony.Parser do
 
   def parse(p), do: do_parse(p, [])
 
-  def do_parse(%Parser{curr: nil, rest: []}, acc), do: {:ok, acc}
+  def do_parse(%Parser{curr: nil, rest: []}, acc), do: acc
 
   def do_parse(p, acc) do
     {p, result} = parse_declaration(p)
@@ -191,7 +191,7 @@ defmodule Tony.Parser do
 
       {p, value}
     else
-      raise "Something is wrong!\n\n #{inspect(p)}"
+      raise "Parser Error"
     end
   end
 end

@@ -6,19 +6,17 @@ defmodule Tony.Eval do
     Environment
   }
 
-  def run({:ok, declarations}) do
+  def run(declarations, nil) do
     env = Environment.new()
     eval(env, declarations)
-
-    :ok
   end
 
-  def eval(env, []), do: {env, nil}
+  def run(declarations, %Environment{} = env) do
+    eval(env, declarations)
+  end
 
   def eval(env, [first | []]) do
-    env
-    |> eval(first)
-    |> elem(1)
+    eval(env, first)
   end
 
   def eval(env, [first | rest]) do
