@@ -1,7 +1,7 @@
 defmodule Mix.Tasks.Repl do
   use Mix.Task
 
-  def run(_), do: read(nil)
+  def run(_), do: read(Tony.Environment.new())
 
   def read(env) do
     env =
@@ -13,39 +13,22 @@ defmodule Mix.Tasks.Repl do
   end
 
   def eval(input, env) do
-    try do
-      input
-      |> Tony.Tokenizer.run()
-      |> Tony.Parser.run()
-      |> Tony.Eval.run(env)
-      |> then(fn {env, result} -> {:ok, env, result} end)
-    rescue
-      err ->
-        message =
-          case err do
-            %FunctionClauseError{module: module, function: function, arity: arity} ->
-              """
-              Error: Function #{module}.#{function}/#{arity} doesn't exists.
-              """
-
-            err ->
-              """
-              Error: #{err.message}
-              """
-          end
-
-        {:error, env, message}
-    end
+    input
+    |> Tony.run(env)
+    |> then(fn
+      {:ok, env, result} -> {:ok, env, result}
+      {:error, err} -> {:error, env, err}
+    end)
   end
 
-  def print({:error, env, message}) do
-    IO.puts(message)
+  def print({:error, env, err}) do
+    IO.puts("Error: #{inspect(err)}")
 
     env
   end
 
   def print({:ok, env, result}) do
-    IO.puts(result)
+    Tony.print(result)
 
     env
   end

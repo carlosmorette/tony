@@ -18,24 +18,28 @@ defmodule Tony.Environment do
     "not"
   ]
 
+  @number_operators [
+    "+",
+    "-",
+    "*",
+    "/"
+  ]
+
   @list ["list", "head", "tail", "empty?"]
 
-  @functions [
-               "+",
-               "-",
-               "*",
-               "/",
-               "defun",
-               "print",
-               "if",
-               "lambda"
-             ] ++ @comparators ++ @logic_operators ++ @list
+  @procedures [
+                "defproc",
+                "print",
+                "if",
+                "lambda",
+                "import"
+              ] ++ @comparators ++ @logic_operators ++ @number_operators ++ @list
 
   defstruct curr_scope: %{},
             out_scope: %{},
-            build_in: nil
+            available: nil
 
-  def new(), do: %Environment{build_in: @functions}
+  def new(), do: %Environment{available: @procedures}
 
   def get(env, key) do
     value = get(env, :curr_scope, key)
@@ -55,15 +59,19 @@ defmodule Tony.Environment do
     Map.get(env.out_scope, key)
   end
 
-  def built_in?(env, id), do: id in env.build_in
+  def available?(env, id), do: id in env.available
 
   def available_identifier?(env, id) do
     value = get(env, :curr_scope, id)
     if is_nil(value), do: true, else: false
   end
 
-  def put_fun(env, %Procedure{name: name, params: _params, body: _body} = fun) do
-    %{env | curr_scope: Map.put(env.curr_scope, name, fun)}
+  def provide(env, procs) do
+    %{env | available: env.available ++ procs}
+  end
+
+  def put_procedure(env, %Procedure{name: name, params: _params, body: _body} = proc) do
+    %{env | curr_scope: Map.put(env.curr_scope, name, proc)}
   end
 
   def new_scope(env) do

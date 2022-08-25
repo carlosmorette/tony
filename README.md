@@ -16,12 +16,12 @@ end
 ```
 
 ```
-(defun (sum a b)
+(defproc (sum a b)
   (+ a b))
 
 (print (sum 9 44))
 
-(defun (checklanguage name)
+(defproc (checklanguage name)
    (if (== name "Tony")
        "My Own LISP"
        "Another language"))
@@ -31,7 +31,7 @@ end
 
 ;; Lambda
 
-(defun (mult-lambda-version a b callback)
+(defproc (mult-lambda-version a b callback)
     (callback (* a b)))
 
 (mult-lambda-version 2 3 (lambda (r) (print r))) ;; 6
@@ -39,7 +39,7 @@ end
 ((lambda (x) (print x)) "That's works!") ;; That's works!
 
 ;; Recursion
-(defun (reduce-sum lst acc)
+(defproc (reduce-sum lst acc)
        (if (empty? lst)
          acc
 		 (reduce-sum

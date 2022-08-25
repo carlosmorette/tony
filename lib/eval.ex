@@ -1,15 +1,11 @@
 defmodule Tony.Eval do
   alias Tony.{
     Token,
+    Libraries,
     Procedure,
     Expression,
     Environment
   }
-
-  def run(declarations, nil) do
-    env = Environment.new()
-    eval(env, declarations)
-  end
 
   def run(declarations, %Environment{} = env) do
     eval(env, declarations)
@@ -29,12 +25,10 @@ defmodule Tony.Eval do
   def eval(env, %Expression{identifier: identifier, parameters: params}) do
     {env, id} = eval(env, identifier)
 
-    cond do
-      Environment.built_in?(env, id) ->
-        eval(id, params, env)
-
-      true ->
-        eval_fun_call(env, id, params)
+    if Environment.available?(env, id) do
+      eval(id, params, env)
+    else
+      eval_procedure_call(id, params, env)
     end
   end
 
@@ -53,13 +47,16 @@ defmodule Tony.Eval do
         {env, :null}
 
       :IDENTIFIER ->
-        if Environment.built_in?(env, value) do
-          {env, value}
-        else
-          case Environment.get(env, value) do
-            nil -> raise "#{value} not found"
-            var -> {env, var}
-          end
+        case Environment.get(env, value) do
+          nil ->
+            if Environment.available?(env, value) do
+              {env, value}
+            else
+              raise "#{value} not found"
+            end
+
+          id ->
+            {env, id}
         end
 
       :OPERATOR ->
@@ -73,16 +70,16 @@ defmodule Tony.Eval do
     end
   end
 
-  def eval("defun", [_ | []], _env), do: raise("defun: expects a body")
+  def eval("defproc", [_ | []], _env), do: raise("defproc: expects a body")
 
-  def eval("defun", [%Expression{identifier: id, parameters: params} | body], env) do
+  def eval("defproc", [%Expression{identifier: id, parameters: params} | body], env) do
     procedure = %Procedure{
       name: id.value,
       params: Enum.map(params, fn p -> p.value end),
       body: body
     }
 
-    {Environment.put_fun(env, procedure), nil}
+    {Environment.put_procedure(env, procedure), nil}
   end
 
   def eval("not", [param | []], env) do
@@ -93,8 +90,8 @@ defmodule Tony.Eval do
 
   def eval("print", [param | []], env) do
     {env, result} = eval(env, param)
-    IO.inspect(result)
-    {env, param}
+    Tony.print(result)
+    {env, result}
   end
 
   def eval("lambda", [params, body], env) do
@@ -141,8 +138,9 @@ defmodule Tony.Eval do
     {env, Enum.empty?(result)}
   end
 
-  def eval(fun, _params, _env) when fun in ["head", "tail", "empty?", "print", "not"] do
-    raise "#{fun}: expects 1 argument"
+  def eval(procedure, _params, _env)
+      when procedure in ["head", "tail", "empty?", "print", "not"] do
+    raise "#{procedure}: expects 1 argument"
   end
 
   def eval("if", [condition, true_expr, false_expr], env) do
@@ -153,6 +151,51 @@ defmodule Tony.Eval do
     else
       eval(env, false_expr)
     end
+  end
+
+  def eval("file:" <> procedure, params, env) do
+    {env, result} =
+      case procedure do
+        "read" ->
+          if Enum.count(params) == 1 do
+            {env, path} = eval(env, List.first(params))
+
+            case Tony.Libraries.File.read(path) do
+              {:ok, content} -> {env, content}
+              {:error, error} -> {env, to_string(error)}
+            end
+          else
+            raise "read: expects 1 argument"
+          end
+
+        "write" ->
+          if Enum.count(params) == 2 do
+            [path, content] = params
+            {env, path} = eval(env, path)
+            {env, content} = eval(env, content)
+
+            # case Tony.Libraries.Write.write(path, content) do
+            #   :ok -> {env, content}
+            #   {:error, error} -> 
+            # end
+
+            if is_binary(path) and is_binary(content) do
+              case File.write(path, content) do
+                :ok -> {env, content}
+                {:error, error} -> {env, to_string(error)}
+              end
+            else
+              raise "write: arguments needs be string"
+            end
+          else
+            raise "write: expects 2 arguments"
+          end
+
+        _ ->
+          raise "#{procedure}: not found"
+      end
+
+    {env, result}
   end
 
   def eval(identifier, params, env) do
@@ -176,10 +219,11 @@ defmodule Tony.Eval do
       "<=" -> handle_comparator("<=", params, env)
       ">" -> handle_comparator(">", params, env)
       "<" -> handle_comparator("<", params, env)
+      "import" -> handle_import(params, env)
     end
   end
 
-  def eval_fun_call(env, %Procedure{} = fun, params) do
+  def eval_procedure_call(%Procedure{} = procedure, params, env) do
     {params, env} =
       Enum.map_reduce(params, env, fn p, acc_env ->
         {env, r} = eval(acc_env, p)
@@ -187,7 +231,7 @@ defmodule Tony.Eval do
       end)
 
     params =
-      fun.params
+      procedure.params
       |> Enum.zip(params)
       |> Enum.into(%{})
 
@@ -196,22 +240,15 @@ defmodule Tony.Eval do
       |> Environment.new_scope()
       |> Environment.put(params)
 
-    do_eval_fun_body(env, fun.body)
+    do_eval_procedure_body(env, procedure.body)
   end
 
-  def do_eval_fun_body(env, [last | []]), do: eval(env, last)
+  def do_eval_procedure_body(env, [last | []]), do: eval(env, last)
 
-  def do_eval_fun_body(env, [first | rest]) do
+  def do_eval_procedure_body(env, [first | rest]) do
     {env, _result} = eval(env, first)
 
-    do_eval_fun_body(env, rest)
-  end
-
-  def make_head_defun(%Expression{identifier: id, parameters: params}) do
-    %{
-      name: id.value,
-      params: Enum.map(params, fn p -> p.value end)
-    }
+    do_eval_procedure_body(env, rest)
   end
 
   def handle_operator("+", params, env) do
@@ -264,6 +301,23 @@ defmodule Tony.Eval do
 
   def handle_comparator(comparator, _params, _env),
     do: raise("#{comparator}: expects 2 arguments")
+
+  def handle_import(lib_names, env) do
+    case Libraries.check_if_all_exist(lib_names) do
+      :ok ->
+        procedures =
+          lib_names
+          |> Libraries.build_procedures_with_lib_name()
+          |> List.flatten()
+
+        {Environment.provide(env, procedures), nil}
+
+      {:error, {:not_found, lib_name}} ->
+        raise "#{lib_name}: librarie not found"
+    end
+  end
+
+  # Utils
 
   def true?(:null), do: false
 
