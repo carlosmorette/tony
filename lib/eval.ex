@@ -153,49 +153,46 @@ defmodule Tony.Eval do
     end
   end
 
-  def eval("file:" <> procedure, params, env) do
-    {env, result} =
-      case procedure do
-        "read" ->
-          if Enum.count(params) == 1 do
-            {env, path} = eval(env, List.first(params))
+  # TODO: refact this
+  def eval("file:read", [path | []], env) do
+    {env, path} = eval(env, path)
 
-            case Tony.Libraries.File.read(path) do
-              {:ok, content} -> {env, content}
-              {:error, error} -> {env, to_string(error)}
-            end
-          else
-            raise "read: expects 1 argument"
-          end
+    case Libraries.File.read(path) do
+      {:ok, content} -> {env, content}
+      {:error, error} -> {env, to_string(error)}
+    end
+  end
 
-        "write" ->
-          if Enum.count(params) == 2 do
-            [path, content] = params
-            {env, path} = eval(env, path)
-            {env, content} = eval(env, content)
+  def eval("file:read", _params, _env), do: raise("file:read: expects 1 argument")
 
-            # case Tony.Libraries.Write.write(path, content) do
-            #   :ok -> {env, content}
-            #   {:error, error} -> 
-            # end
+  def eval("file:write", [path, content | []], env) do
+    {env, path} = eval(env, path)
+    {env, content} = eval(env, content)
 
-            if is_binary(path) and is_binary(content) do
-              case File.write(path, content) do
-                :ok -> {env, content}
-                {:error, error} -> {env, to_string(error)}
-              end
-            else
-              raise "write: arguments needs be string"
-            end
-          else
-            raise "write: expects 2 arguments"
-          end
+    case Libraries.File.write(path, content) do
+      :ok -> {env, content}
+      {:error, error} -> {env, to_string(error)}
+    end
+  end
 
-        _ ->
-          raise "#{procedure}: not found"
+  def eval("file:write", _params, _env), do: raise("file:write: expects 2 arguments")
+
+  def eval("regex:build", [param | []], env) do
+    {env, regex_str} = eval(env, param)
+
+    result =
+      case Libraries.Regex.build(regex_str) do
+        {:ok, regex} -> regex
+        {:error, error} -> inspect(error)
       end
 
     {env, result}
+  end
+
+  def eval("regex:match-pattern?", [regex, pattern | []], env) do
+    {env, regex} = eval(env, regex)
+    {env, pattern} = eval(env, pattern)
+    {env, Libraries.Regex.match_pattern?(regex, pattern)}
   end
 
   def eval(identifier, params, env) do

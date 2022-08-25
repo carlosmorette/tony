@@ -1,5 +1,9 @@
 defmodule Tony.Libraries do
-  @libs ["file"]
+  @type procedure :: String.t()
+
+  @callback procedures() :: list(procedure())
+
+  @libs ["file", "regex"]
 
   def list_all do
     @libs
@@ -10,6 +14,7 @@ defmodule Tony.Libraries do
   def procedures_by_name(name) do
     case name do
       "file" -> Tony.Libraries.File.procedures()
+      "regex" -> Tony.Libraries.Regex.procedures()
     end
   end
 

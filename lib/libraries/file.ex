@@ -1,4 +1,7 @@
 defmodule Tony.Libraries.File do
+  @behaviour Tony.Libraries
+
+  @impl true
   def procedures, do: ["write", "read"]
 
   def read(path) do
@@ -9,7 +12,5 @@ defmodule Tony.Libraries.File do
     File.write(path, content)
   end
 
-  def write(_path, _content) do
-    ["error", "write: arguments needs be string"]
-  end
+  def write(_path, _content), do: raise("write: arguments needs be string")
 end

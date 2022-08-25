@@ -25,6 +25,7 @@ defmodule Tony do
               another_error
           end
 
+        print(message)
         {:error, message}
     end
   end
