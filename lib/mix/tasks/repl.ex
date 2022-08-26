@@ -1,6 +1,8 @@
 defmodule Mix.Tasks.Repl do
   use Mix.Task
 
+  require Logger
+
   def run(_), do: read(Tony.Environment.new())
 
   def read(env) do
@@ -21,9 +23,7 @@ defmodule Mix.Tasks.Repl do
     end)
   end
 
-  def print({:error, env, err}) do
-    IO.puts("Error: #{inspect(err)}")
-
+  def print({:error, env, _err}) do
     env
   end
 

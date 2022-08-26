@@ -1,4 +1,6 @@
 defmodule Tony do
+  require Logger
+
   alias Tony.{
     Eval,
     Parser,
@@ -16,17 +18,10 @@ defmodule Tony do
       |> then(fn {env, result} -> {:ok, env, result} end)
     rescue
       err ->
-        message =
-          case err do
-            %RuntimeError{message: message} ->
-              message
+        error = Exception.format(:error, err, __STACKTRACE__)
 
-            another_error ->
-              another_error
-          end
-
-        print(message)
-        {:error, message}
+        Logger.error(error)
+        {:error, error}
     end
   end
 

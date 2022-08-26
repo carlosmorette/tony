@@ -90,7 +90,7 @@ defmodule Tony.Eval do
 
   def eval("print", [param | []], env) do
     {env, result} = eval(env, param)
-    Tony.print(result)
+    IO.puts(inspect(result))
     {env, result}
   end
 
@@ -99,12 +99,7 @@ defmodule Tony.Eval do
   end
 
   def eval("list", params, env) do
-    {items, env} =
-      Enum.map_reduce(params, env, fn p, e ->
-        {new_e, r} = eval(e, p)
-        {r, new_e}
-      end)
-
+    {env, items} = eval_all(env, params)
     {env, items}
   end
 
@@ -137,6 +132,18 @@ defmodule Tony.Eval do
     {env, result} = eval(env, param)
     {env, Enum.empty?(result)}
   end
+
+  def eval("append", [left, right | []], env) do
+    {env, [left, right]} = eval_all(env, [left, right])
+
+    if is_list(left) and is_list(right) do
+      {env, left ++ right}
+    else
+      raise "append: arguents needs be a list"
+    end
+  end
+
+  def eval("append", _params, _env), do: raise("append: expects 2 arguments")
 
   def eval(procedure, _params, _env)
       when procedure in ["head", "tail", "empty?", "print", "not"] do
@@ -189,9 +196,14 @@ defmodule Tony.Eval do
   end
 
   def eval("regex:match-pattern?", [regex, pattern | []], env) do
-    {env, regex} = eval(env, regex)
-    {env, pattern} = eval(env, pattern)
+    {env, [regex, pattern]} = eval_all(env, [regex, pattern])
     {env, Libraries.Regex.match_pattern?(regex, pattern)}
+  end
+
+  def eval("regex:run", [regex, pattern | []], env) do
+    # {env, [regex, pattern]} = eval_all(env, [regex, pattern])
+    {env, [regex, pattern]} = eval(env, [regex, pattern])
+    {env, Libraries.Regex.run(regex, pattern)}
   end
 
   def eval("cond", params, env) do
@@ -293,11 +305,7 @@ defmodule Tony.Eval do
   end
 
   def eval_procedure_call(%Procedure{} = procedure, params, env) do
-    {params, env} =
-      Enum.map_reduce(params, env, fn p, acc_env ->
-        {env, r} = eval(acc_env, p)
-        {r, env}
-      end)
+    {env, params} = eval_all(env, params)
 
     params =
       procedure.params
@@ -340,7 +348,7 @@ defmodule Tony.Eval do
   def check_if_all_numbers!(params) do
     is? = Enum.all?(params, &is_number/1)
 
-    if not is?, do: raise("All needs be a number")
+    if not is?, do: raise("all needs be a number")
   end
 
   def eval_all(%Environment{} = env, params) do
