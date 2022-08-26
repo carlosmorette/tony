@@ -25,7 +25,7 @@ defmodule Tony.Environment do
     "/"
   ]
 
-  @list ["list", "head", "tail", "empty?", "append"]
+  @list ["list", "head", "tail", "empty?", "append", "get-by-index"]
 
   @procedures [
                 "defproc",

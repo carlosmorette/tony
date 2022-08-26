@@ -105,26 +105,17 @@ defmodule Tony.Eval do
 
   def eval("head", [param | []], env) do
     {env, result} = eval(env, param)
-
-    if is_list(result) do
-      {env, List.first(result)}
-    else
-      raise "head: expects a list"
-    end
+    {env, List.first(result)}
   end
 
   def eval("tail", [param | []], env) do
     {env, result} = eval(env, param)
 
-    if is_list(result) do
-      if Enum.empty?(result) do
-        {env, []}
-      else
-        [_head | tail] = result
-        {env, tail}
-      end
+    if Enum.empty?(result) do
+      {env, []}
     else
-      raise "tail: expects a list"
+      [_head | tail] = result
+      {env, tail}
     end
   end
 
@@ -148,6 +139,11 @@ defmodule Tony.Eval do
   def eval(procedure, _params, _env)
       when procedure in ["head", "tail", "empty?", "print", "not"] do
     raise "#{procedure}: expects 1 argument"
+  end
+
+  def eval("get-by-index", [list, index | []], env) do
+    {env, [list, index]} = eval_all(env, [list, index])
+    {env, Enum.at(list, index)}
   end
 
   def eval("if", [condition, true_expr, false_expr], env) do
@@ -195,15 +191,19 @@ defmodule Tony.Eval do
     {env, result}
   end
 
-  def eval("regex:match-pattern?", [regex, pattern | []], env) do
-    {env, [regex, pattern]} = eval_all(env, [regex, pattern])
-    {env, Libraries.Regex.match_pattern?(regex, pattern)}
+  def eval("regex:match-pattern?", [re, pattern | []], env) do
+    {env, [re, pattern]} = eval_all(env, [re, pattern])
+    {env, Libraries.Regex.match_pattern?(re, pattern)}
   end
 
-  def eval("regex:run", [regex, pattern | []], env) do
-    # {env, [regex, pattern]} = eval_all(env, [regex, pattern])
-    {env, [regex, pattern]} = eval(env, [regex, pattern])
-    {env, Libraries.Regex.run(regex, pattern)}
+  def eval("regex:run", [re, pattern | []], env) do
+    {env, [re, pattern]} = eval_all(env, [re, pattern])
+    {env, Libraries.Regex.run(re, pattern)}
+  end
+
+  def eval("regex:split", [re, pattern | []], env) do
+    {env, [re, pattern]} = eval_all(env, [re, pattern])
+    {env, Libraries.Regex.split(re, pattern)}
   end
 
   def eval("cond", params, env) do
@@ -269,7 +269,7 @@ defmodule Tony.Eval do
 
   def eval(comparator, [left, right | []], env)
       when comparator in ["==", "!=", ">=", "<=", ">", "<"] do
-    {env, [left | right]} = eval_all(env, [left, right])
+    {env, [left, right]} = eval_all(env, [left, right])
 
     result =
       case comparator do
