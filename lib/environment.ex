@@ -32,7 +32,8 @@ defmodule Tony.Environment do
                 "print",
                 "if",
                 "lambda",
-                "import"
+                "import",
+                "cond"
               ] ++ @comparators ++ @logic_operators ++ @number_operators ++ @list
 
   defstruct curr_scope: %{},

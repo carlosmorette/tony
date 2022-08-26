@@ -153,7 +153,6 @@ defmodule Tony.Eval do
     end
   end
 
-  # TODO: refact this
   def eval("file:read", [path | []], env) do
     {env, path} = eval(env, path)
 
@@ -195,28 +194,101 @@ defmodule Tony.Eval do
     {env, Libraries.Regex.match_pattern?(regex, pattern)}
   end
 
-  def eval(identifier, params, env) do
-    {params, env} =
-      Enum.map_reduce(params, env, fn p, e ->
-        {new_e, result} = eval(e, p)
+  def eval("cond", params, env) do
+    params
+    |> Enum.reduce_while({env, false}, fn expr, {aenv, sometrue?} ->
+      {nenv, r} = eval(aenv, expr.identifier)
 
-        {result, new_e}
-      end)
+      if true?(r), do: {:halt, {nenv, expr}}, else: {:cont, {nenv, sometrue?}}
+    end)
+    |> case do
+      {_, false} ->
+        raise "cond: no true expression"
 
-    case identifier do
-      "+" -> handle_operator("+", params, env)
-      "-" -> handle_operator("-", params, env)
-      "*" -> handle_operator("*", params, env)
-      "/" -> handle_operator("/", params, env)
-      "and" -> handle_operator("and", params, env)
-      "or" -> handle_operator("or", params, env)
-      "==" -> handle_comparator("==", params, env)
-      "!=" -> handle_comparator("!=", params, env)
-      ">=" -> handle_comparator(">=", params, env)
-      "<=" -> handle_comparator("<=", params, env)
-      ">" -> handle_comparator(">", params, env)
-      "<" -> handle_comparator("<", params, env)
-      "import" -> handle_import(params, env)
+      {env, expr} ->
+        eval_cond_body(env, expr)
+    end
+  end
+
+  def eval("+", params, env) do
+    {env, params} = eval_all(env, params)
+    check_if_all_numbers!(params)
+    {env, Enum.sum(params)}
+  end
+
+  def eval("-", params, env) do
+    {env, params} = eval_all(env, params)
+    check_if_all_numbers!(params)
+    [head | params] = params
+    {env, Enum.reduce(params, head, &(&2 - &1))}
+  end
+
+  def eval("*", params, env) do
+    {env, params} = eval_all(env, params)
+    check_if_all_numbers!(params)
+    [head | params] = params
+    {env, Enum.reduce(params, head, &(&2 * &1))}
+  end
+
+  def eval("/", params, env) do
+    {env, params} = eval_all(env, params)
+    check_if_all_numbers!(params)
+    [head | params] = params
+    {env, Enum.reduce(params, head, &(&2 / &1))}
+  end
+
+  def eval("and", params, env) do
+    {env, params} = eval_all(env, params)
+
+    {env,
+     Enum.reduce_while(params, true, fn p, _acc ->
+       if p, do: {:cont, true}, else: {:halt, false}
+     end)}
+  end
+
+  def eval("or", params, env) do
+    {env, params} = eval_all(env, params)
+
+    {env,
+     Enum.reduce_while(params, false, fn p, _acc ->
+       if p, do: {:halt, true}, else: {:cont, false}
+     end)}
+  end
+
+  def eval(comparator, [left, right | []], env)
+      when comparator in ["==", "!=", ">=", "<=", ">", "<"] do
+    {env, [left | right]} = eval_all(env, [left, right])
+
+    result =
+      case comparator do
+        "==" -> left == right
+        "!=" -> left != right
+        ">=" -> left >= right
+        "<=" -> left <= right
+        ">" -> left > right
+        "<" -> left < right
+      end
+
+    {env, result}
+  end
+
+  def eval(proc, _params, _env) when proc in ["==", "!=", ">=", "<=", ">", "<"],
+    do: raise("#{proc}: expects 2 arguments")
+
+  def eval("import", params, env) do
+    {env, lib_names} = eval_all(env, params)
+
+    case Libraries.check_if_all_exist(lib_names) do
+      :ok ->
+        procedures =
+          lib_names
+          |> Libraries.build_procedures_with_lib_name()
+          |> List.flatten()
+
+        {Environment.provide(env, procedures), nil}
+
+      {:error, {:not_found, lib_name}} ->
+        raise "#{lib_name}: librarie not found"
     end
   end
 
@@ -248,70 +320,15 @@ defmodule Tony.Eval do
     do_eval_procedure_body(env, rest)
   end
 
-  def handle_operator("+", params, env) do
-    check_if_all_numbers!(params)
-    {env, Enum.sum(params)}
+  def eval_cond_body(env, %Expression{parameters: cond_body}) do
+    do_eval_procedure_body(env, cond_body)
   end
 
-  def handle_operator("-", [head | params], env) do
-    check_if_all_numbers!(params)
-    {env, Enum.reduce(params, head, &(&2 - &1))}
-  end
+  def do_eval_cond_body(env, [last | []]), do: eval(env, last)
 
-  def handle_operator("*", [head | params], env) do
-    check_if_all_numbers!(params)
-    {env, Enum.reduce(params, head, &(&2 * &1))}
-  end
-
-  def handle_operator("/", [head | params], env) do
-    check_if_all_numbers!(params)
-    {env, Enum.reduce(params, head, &(&2 / &1))}
-  end
-
-  def handle_operator("and", params, env) do
-    {env,
-     Enum.reduce_while(params, true, fn p, _acc ->
-       if p, do: {:cont, true}, else: {:halt, false}
-     end)}
-  end
-
-  def handle_operator("or", params, env) do
-    {env,
-     Enum.reduce_while(params, false, fn p, _acc ->
-       if p, do: {:halt, true}, else: {:cont, false}
-     end)}
-  end
-
-  def handle_comparator(comparator, [left, right | []], env) do
-    result =
-      case comparator do
-        "==" -> left == right
-        "!=" -> left != right
-        ">=" -> left >= right
-        "<=" -> left <= right
-        ">" -> left > right
-        "<" -> left < right
-      end
-
-    {env, result}
-  end
-
-  def handle_comparator(comparator, _params, _env),
-    do: raise("#{comparator}: expects 2 arguments")
-
-  def handle_import(lib_names, env) do
-    case Libraries.check_if_all_exist(lib_names) do
-      :ok ->
-        procedures =
-          lib_names
-          |> Libraries.build_procedures_with_lib_name()
-          |> List.flatten()
-
-        {Environment.provide(env, procedures), nil}
-
-      {:error, {:not_found, lib_name}} ->
-        raise "#{lib_name}: librarie not found"
-    end
+  def do_eval_cond_body(env, [first | rest]) do
+    {env, _result} = eval(env, first)
+    do_eval_procedure_body(env, rest)
   end
 
   # Utils
@@ -324,5 +341,16 @@ defmodule Tony.Eval do
     is? = Enum.all?(params, &is_number/1)
 
     if not is?, do: raise("All needs be a number")
+  end
+
+  def eval_all(%Environment{} = env, params) do
+    {params, env} =
+      Enum.map_reduce(params, env, fn p, e ->
+        {new_e, result} = eval(e, p)
+
+        {result, new_e}
+      end)
+
+    {env, params}
   end
 end
