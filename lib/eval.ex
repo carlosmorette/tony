@@ -44,7 +44,7 @@ defmodule Tony.Eval do
         {env, String.to_atom(value)}
 
       :NULL ->
-        {env, :null}
+        {env, nil}
 
       :IDENTIFIER ->
         case Environment.get(env, value) do
@@ -305,6 +305,7 @@ defmodule Tony.Eval do
   end
 
   def eval_procedure_call(%Procedure{} = procedure, params, env) do
+    check_arity!(procedure, params)
     {env, params} = eval_all(env, params)
 
     params =
@@ -318,6 +319,16 @@ defmodule Tony.Eval do
       |> Environment.put(params)
 
     do_eval_procedure_body(env, procedure.body)
+  end
+
+  def check_arity!(%Procedure{} = procedure, params) do
+    unless same_arity?(procedure, params) do
+      raise "#{procedure.name || "lambda"}: wrong arity #{Enum.count(params)}"
+    end
+  end
+
+  def same_arity?(%Procedure{params: p_params}, params) do
+    Enum.count(p_params) == Enum.count(params)
   end
 
   def do_eval_procedure_body(env, [last | []]), do: eval(env, last)
@@ -340,8 +351,6 @@ defmodule Tony.Eval do
   end
 
   # Utils
-
-  def true?(:null), do: false
 
   def true?(condition), do: condition
 
