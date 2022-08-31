@@ -90,7 +90,7 @@ defmodule Tony.Eval do
 
   def eval("print", [param | []], env) do
     {env, result} = eval(env, param)
-    IO.puts(inspect(result))
+    IO.inspect(result)
     {env, result}
   end
 
@@ -313,12 +313,14 @@ defmodule Tony.Eval do
       |> Enum.zip(params)
       |> Enum.into(%{})
 
-    env =
+    fun_env =
       env
-      |> Environment.new_scope()
+      |> Environment.new()
       |> Environment.put(params)
 
-    do_eval_procedure_body(env, procedure.body)
+    {env, result} = do_eval_procedure_body(fun_env, procedure.body)
+
+    {env.outer, result}
   end
 
   def check_arity!(%Procedure{} = procedure, params) do
@@ -335,7 +337,6 @@ defmodule Tony.Eval do
 
   def do_eval_procedure_body(env, [first | rest]) do
     {env, _result} = eval(env, first)
-
     do_eval_procedure_body(env, rest)
   end
 
