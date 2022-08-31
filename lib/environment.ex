@@ -36,34 +36,36 @@ defmodule Tony.Environment do
                 "cond"
               ] ++ @comparators ++ @logic_operators ++ @number_operators ++ @list
 
-  defstruct curr_scope: %{},
-            out_scope: %{},
+  defstruct inner: %{},
+            outer: nil,
             available: nil
+
+  def new(%Environment{} = env) do
+    %Environment{
+      available: @procedures,
+      outer: env,
+      inner: %{}
+    }
+  end
 
   def new(), do: %Environment{available: @procedures}
 
-  def get(env, key) do
-    value = get(env, :curr_scope, key)
+  def get(nil, _key), do: nil
 
-    if is_nil(value) do
-      get(env, :out_scope, key)
-    else
-      value
+  def get(%Environment{} = env, key) do
+    case Map.get(env.inner, key) do
+      nil ->
+        get(env.outer, key)
+
+      value ->
+        value
     end
-  end
-
-  def get(env, :curr_scope, key) do
-    Map.get(env.curr_scope, key)
-  end
-
-  def get(env, :out_scope, key) do
-    Map.get(env.out_scope, key)
   end
 
   def available?(env, id), do: id in env.available
 
   def available_identifier?(env, id) do
-    value = get(env, :curr_scope, id)
+    value = get(env, id)
     if is_nil(value), do: true, else: false
   end
 
@@ -72,14 +74,14 @@ defmodule Tony.Environment do
   end
 
   def put_procedure(env, %Procedure{name: name, params: _params, body: _body} = proc) do
-    %{env | curr_scope: Map.put(env.curr_scope, name, proc)}
+    %{env | inner: Map.put(env.inner, name, proc)}
   end
 
   def new_scope(env) do
-    %{env | out_scope: Map.merge(env.out_scope, env.curr_scope), curr_scope: %{}}
+    %{env | outer: Map.merge(env.outer || %{}, env.inner), inner: %{}}
   end
 
   def put(env, map) do
-    %{env | curr_scope: Map.merge(env.curr_scope, map)}
+    %{env | inner: Map.merge(env.inner, map)}
   end
 end
