@@ -33,7 +33,8 @@ defmodule Tony.Environment do
                 "if",
                 "lambda",
                 "import",
-                "cond"
+                "cond",
+                "map"
               ] ++ @comparators ++ @logic_operators ++ @number_operators ++ @list
 
   defstruct inner: %{},

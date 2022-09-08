@@ -38,13 +38,22 @@ defmodule Tony.Eval do
         {env, String.to_integer(value)}
 
       :STRING ->
-        {env, String.trim(String.replace(value, "\"", ""))}
+        {env,
+         value
+         |> String.replace("\"", "")
+         |> String.trim()}
 
       :BOOLEAN ->
         {env, String.to_atom(value)}
 
       :NULL ->
         {env, nil}
+
+      :ATOM ->
+        {env,
+         value
+         |> String.replace(["\"", ":"], "")
+         |> String.to_atom()}
 
       :IDENTIFIER ->
         case Environment.get(env, value) do
@@ -265,6 +274,18 @@ defmodule Tony.Eval do
      Enum.reduce_while(params, false, fn p, _acc ->
        if p, do: {:halt, true}, else: {:cont, false}
      end)}
+  end
+
+  def eval("map", params, env) do
+    {env, map} =
+      Enum.reduce(params, {env, %{}}, fn p, {env, map} ->
+        %Expression{identifier: kt, parameters: [vt]} = p
+        {env, key} = eval(env, kt)
+        {env, value} = eval(env, vt)
+        {env, Map.merge(map, %{key => value})}
+      end)
+
+    {env, map}
   end
 
   def eval(comparator, [left, right | []], env)

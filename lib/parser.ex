@@ -145,6 +145,7 @@ defmodule Tony.Parser do
       |> Kernel.or(match(p, :OPERATOR))
       |> Kernel.or(match(p, :COMPARATOR))
       |> Kernel.or(match(p, :LOGIC_OPERATOR))
+      |> Kernel.or(match(p, :ATOM))
 
     if is_head_expr? do
       get_curr_token(p)
@@ -185,6 +186,7 @@ defmodule Tony.Parser do
       |> Kernel.or(match(p, :BOOLEAN))
       |> Kernel.or(match(p, :IDENTIFIER))
       |> Kernel.or(match(p, :NULL))
+      |> Kernel.or(match(p, :ATOM))
 
     if is_primary? do
       {p, value} = get_curr_token(p)
