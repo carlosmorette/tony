@@ -18,3 +18,12 @@
 (mult-lambda-version 2 3 (lambda (r) (print r))) ;; 6
 
 ((lambda (x) (print x)) "That's works!") ;; That's works!
+
+;; Libraries
+
+;; Using imports
+;; Available libs File and Regex
+(import "file" "regex")
+
+;; ([librarie]:[function] [params...])
+(print (file:read "mix.exs")) ;; mix.exs content

@@ -47,6 +47,15 @@ end
 			 (+ acc (head lst)))))
 
 (print (reduce-sum (list 54 67 89) 0)) ;; 210
+
+;; Libraries
+
+;; Using imports
+;; Available libs File and Regex
+(import "file" "regex")
+
+;; ([librarie]:[function] [params...])
+(print (file:read "mix.exs")) ;; mix.exs content
 ```
 
 Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
