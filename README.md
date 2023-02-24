@@ -15,7 +15,7 @@ def deps do
 end
 ```
 
-```
+```lisp
 (defproc (sum a b)
   (+ a b))
 
